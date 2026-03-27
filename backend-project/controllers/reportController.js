@@ -1,5 +1,7 @@
 const Employee = require('../models/Employee');
 const Payroll = require('../models/Payroll');
+const Allowance = require('../models/Allowance');
+const Deduction = require("../models/Deduction");
 
 // 1️⃣ All employees + payrolls
 const getAllEmployeesWithPayrolls = async (req, res) => {
@@ -9,11 +11,33 @@ const getAllEmployeesWithPayrolls = async (req, res) => {
     const result = await Promise.all(
       employees.map(async (emp) => {
         const payrolls = await Payroll.find({ employee: emp._id }).sort({ paymentDate: -1 });
-        return { employee: emp, payrolls };
+
+        // ✅ FIX: format payroll data
+        const formattedPayrolls = await Promise.all(
+          payrolls.map(async (p) => {
+            const allowances = await Allowance.find({ employee: emp._id });
+            const deductions = await Deduction.find({ employee: emp._id });
+
+            const totalAllowances = allowances.reduce((sum, a) => sum + a.amount, 0);
+            const totalDeductions = deductions.reduce((sum, d) => sum + d.amount, 0);
+
+            return {
+              employeeName: emp.name,
+              basicSalary: p.basicSalary,
+              paymentMonth: p.payMonth,
+              totalSalary: p.totalSalary,
+              totalAllowances,
+              totalDeductions
+            };
+          })
+        );
+
+        return formattedPayrolls;
       })
     );
 
     res.json(result);
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -27,59 +51,99 @@ const getEmployeeByIdWithPayrolls = async (req, res) => {
 
     const payrolls = await Payroll.find({ employee: emp._id }).sort({ paymentDate: -1 });
 
-    res.json({ employee: emp, payrolls });
+    const result = await Promise.all(
+      payrolls.map(async (p) => {
+        const allowances = await Allowance.find({ employee: emp._id });
+        const deductions = await Deduction.find({ employee: emp._id });
+
+        const totalAllowances = allowances.reduce((sum, a) => sum + a.amount, 0);
+        const totalDeductions = deductions.reduce((sum, d) => sum + d.amount, 0);
+
+        return {
+          employeeName: emp.name,
+          basicSalary: p.basicSalary,
+          paymentMonth: p.payMonth,
+          totalSalary: p.totalSalary,
+          totalAllowances,
+          totalDeductions
+        };
+      })
+    );
+
+    res.json(result);
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// 3️⃣ Employees + payrolls by specific month (POST body)
-const getPayrollsByMonth = async (req, res) => {
-  const { payMonth } = req.body; // send { "payMonth": "YYYY-MM" }
-  if (!payMonth) return res.status(400).json({ message: 'payMonth is required in format YYYY-MM' });
-
+// 3️⃣ Full Payroll Report (already correct)
+const getFullPayrollReport = async (req, res) => {
   try {
-    // Find payrolls for the given month
-    const payrolls = await Payroll.find({ payMonth })
-      .populate('employee', 'name position phone') // get employee details
+    const payrolls = await Payroll.find()
+      .populate('employee', 'name')
       .sort({ paymentDate: -1 });
 
-    res.json({
-      payMonth,
-      payrolls
-    });
+    const report = await Promise.all(
+      payrolls.map(async (p) => {
+        const allowances = await Allowance.find({ employee: p.employee._id });
+        const deductions = await Deduction.find({ employee: p.employee._id });
+
+        const totalAllowances = allowances.reduce((sum, a) => sum + a.amount, 0);
+        const totalDeductions = deductions.reduce((sum, d) => sum + d.amount, 0);
+
+        return {
+          employeeName: p.employee.name,
+          basicSalary: p.basicSalary,
+          paymentMonth: p.payMonth,
+          totalSalary: p.totalSalary,
+          totalAllowances,
+          totalDeductions
+        };
+      })
+    );
+
+    res.json(report);
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// ==============================
-// Optional: get employees with payrolls in the month
-// ==============================
+// 4️⃣ Employees by month
 const getEmployeesByMonth = async (req, res) => {
   const { payMonth } = req.body;
-  if (!payMonth) return res.status(400).json({ message: 'payMonth is required in format YYYY-MM' });
+
+  if (!payMonth) {
+    return res.status(400).json({ message: 'payMonth is required' });
+  }
 
   try {
     const payrolls = await Payroll.find({ payMonth })
-      .populate('employee', 'name position phone')
+      .populate('employee', 'name')
       .sort({ paymentDate: -1 });
 
-    // Extract unique employees
-    const uniqueEmployees = [];
-    const ids = new Set();
-    payrolls.forEach(p => {
-      if (!ids.has(p.employee._id.toString())) {
-        ids.add(p.employee._id.toString());
-        uniqueEmployees.push(p.employee);
-      }
-    });
+    const result = await Promise.all(
+      payrolls.map(async (p) => {
+        const allowances = await Allowance.find({ employee: p.employee._id });
+        const deductions = await Deduction.find({ employee: p.employee._id });
 
-    res.json({
-      payMonth,
-      employees: uniqueEmployees,
-      payrolls
-    });
+        const totalAllowances = allowances.reduce((sum, a) => sum + a.amount, 0);
+        const totalDeductions = deductions.reduce((sum, d) => sum + d.amount, 0);
+
+        return {
+          employeeName: p.employee.name,
+          basicSalary: p.basicSalary,
+          paymentMonth: p.payMonth,
+          totalSalary: p.totalSalary,
+          totalAllowances,
+          totalDeductions
+        };
+      })
+    );
+
+    res.json(result);
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -89,5 +153,5 @@ module.exports = {
   getAllEmployeesWithPayrolls,
   getEmployeeByIdWithPayrolls,
   getEmployeesByMonth,
-  getPayrollsByMonth
+  getFullPayrollReport
 };

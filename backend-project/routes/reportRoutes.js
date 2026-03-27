@@ -20,6 +20,6 @@ router.get('/employees/:id', getEmployeeByIdWithPayrolls);
 router.post('/employees/by-month', getEmployeesByMonth);
 
 // Payrolls by month (body: { month: "YYYY-MM" })
-router.post('/payrolls/by-month', getPayrollsByMonth);
+router.post('/payrolls/', getPayrollsByMonth);
 
 module.exports = router;

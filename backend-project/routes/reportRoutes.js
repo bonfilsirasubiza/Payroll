@@ -1,25 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const protect = require('../middleware/auth'); // JWT middleware if needed
-const {
-  getAllEmployeesWithPayrolls,
-  getEmployeeByIdWithPayrolls,
-  getEmployeesByMonth,
-  getPayrollsByMonth
-} = require('../controllers/reportController');
+const protect = require('../middleware/auth');
+const { getReport, getReportWithAdvancedFilters } = require('../controllers/reportController');
 
-router.use(protect); // protect all routes
+router.use(protect);
 
-// All employees + payrolls
-router.get('/employees', getAllEmployeesWithPayrolls);
+// Single unified endpoint for all reports
+router.post('/report', getReport);
 
-// Employee by ID + payrolls
-router.get('/employees/:id', getEmployeeByIdWithPayrolls);
-
-// Employees + payrolls by month (body: { month: "YYYY-MM" })
-router.post('/employees/by-month', getEmployeesByMonth);
-
-// Payrolls by month (body: { month: "YYYY-MM" })
-router.post('/payrolls/', getPayrollsByMonth);
+// Optional: Advanced filtering endpoint
+router.post('/report/advanced', getReportWithAdvancedFilters);
 
 module.exports = router;

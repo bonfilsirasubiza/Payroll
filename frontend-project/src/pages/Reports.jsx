@@ -11,6 +11,22 @@ const getEmployeeLabel = (employee) => (
   employee.name || employee.fullName || employee.email || employee.employeeCode || employee._id
 );
 
+const getReportEmployeeName = (item, employees = []) => {
+  if (item.employeeName && item.employeeName !== 'Unknown Employee') {
+    return item.employeeName;
+  }
+
+  const employeeId = item.employeeId?._id || item.employeeId;
+  if (employeeId) {
+    const matchedEmployee = employees.find((employee) => employee._id === employeeId);
+    if (matchedEmployee) {
+      return getEmployeeLabel(matchedEmployee);
+    }
+  }
+
+  return item.employeeName || 'Unknown Employee';
+};
+
 export const Reports = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -129,8 +145,13 @@ export const Reports = () => {
   }, [loadEmployees, loadReports]);
 
   const handleExport = () => {
+    const exportRows = data.map((item) => ({
+      ...item,
+      employeeName: getReportEmployeeName(item, employees)
+    }));
+
     exportToCSV(
-      data,
+      exportRows,
       ['Employee', 'Net Salary', 'Pay Month', 'Basic Salary', 'Total Allowances', 'Total Deductions'],
       ['employeeName', 'netSalary', 'paymentMonth', 'basicSalary', 'totalAllowances', 'totalDeductions'],
       'Payroll_Report'
@@ -307,7 +328,7 @@ export const Reports = () => {
           variant="blue"
           renderRow={(item) => (
             <>
-              <td className="px-6 py-4 font-bold">{item.employeeName}</td>
+              <td className="px-6 py-4 font-bold">{getReportEmployeeName(item, employees)}</td>
               <td className="px-6 py-4">{item.basicSalary ?? 0} FRW</td>
               <td className="px-6 py-4">{item.totalAllowances ?? 0} FRW</td>
               <td className="px-6 py-4">{item.totalDeductions ?? 0} FRW</td>

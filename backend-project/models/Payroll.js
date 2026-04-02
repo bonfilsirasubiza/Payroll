@@ -7,6 +7,10 @@ const payrollSchema = new mongoose.Schema({
     ref: 'Employee', 
     required: true 
   },
+  employeeName: {
+    type: String,
+    trim: true
+  },
   basicSalary: { 
     type: Number, 
     required: true 

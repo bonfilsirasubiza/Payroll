@@ -3,13 +3,23 @@ const Payroll = require('../models/Payroll');
 const Allowance = require('../models/Allowance');
 const Deduction = require("../models/Deduction");
 
+const getEmployeeDisplayName = (employee, fallback = 'Unknown Employee') => (
+  employee?.name ||
+  employee?.fullName ||
+  employee?.email ||
+  employee?.employeeCode ||
+  fallback
+);
+
 // Helper function to format payroll data with allowances and deductions
 const formatPayrollData = async (payroll, employee) => {
+  const employeeName = getEmployeeDisplayName(employee, payroll.employeeName || 'Unknown Employee');
+
   if (!employee) {
     return {
       payrollId: payroll._id,
       employeeId: null,
-      employeeName: 'Unknown Employee',
+      employeeName,
       employeeEmail: 'N/A',
       basicSalary: payroll.basicSalary,
       paymentMonth: payroll.payMonth,
@@ -30,7 +40,7 @@ const formatPayrollData = async (payroll, employee) => {
   return {
     payrollId: payroll._id,
     employeeId: employee._id,
-    employeeName: employee.name,
+    employeeName,
     employeeEmail: employee.email,
     basicSalary: payroll.basicSalary,
     paymentMonth: payroll.payMonth,
@@ -192,7 +202,7 @@ const getReportWithAdvancedFilters = async (req, res) => {
     if (includeDetails === false) {
       // Simplified response (just basic info)
       formattedPayrolls = payrolls.map(p => ({
-        employeeName: p.employee.name,
+        employeeName: getEmployeeDisplayName(p.employee, p.employeeName || 'Unknown Employee'),
         paymentMonth: p.payMonth,
         totalSalary: p.totalSalary
       }));

@@ -4,6 +4,14 @@ const Deduction = require('../models/Deduction');
 const Employee = require('../models/Employee');
 const { getNextGeneratedCode } = require('../utils/generatedIds');
 
+const getEmployeeDisplayName = (employee, fallback = 'Unknown Employee') => (
+  employee?.name ||
+  employee?.fullName ||
+  employee?.email ||
+  employee?.employeeCode ||
+  fallback
+);
+
 // ==============================
 // Create Payroll
 // ==============================
@@ -32,6 +40,7 @@ const createPayroll = async (req, res) => {
     const payrollCode = await getNextGeneratedCode(Payroll, 'payrollCode', 'PAY_');
     const payroll = await Payroll.create({
       employee,
+      employeeName: getEmployeeDisplayName(emp),
       basicSalary,
       totalSalary,
       paymentDate: date,
@@ -86,22 +95,32 @@ const getPayrollById = async (req, res) => {
 const updatePayroll = async (req, res) => {
   try {
     const { employee, basicSalary, paymentDate } = req.body;
+    const existingPayroll = await Payroll.findById(req.params.id);
+    if (!existingPayroll) return res.status(404).json({ message: 'Payroll not found' });
+
+    let resolvedEmployeeId = existingPayroll.employee;
+    let resolvedEmployeeName = existingPayroll.employeeName || '';
 
     // If employee is being updated, check it exists
     if (employee) {
       const empExists = await Employee.findById(employee);
       if (!empExists) return res.status(404).json({ message: 'Employee not found' });
+      resolvedEmployeeId = employee;
+      resolvedEmployeeName = getEmployeeDisplayName(empExists);
+    } else if (!resolvedEmployeeName && resolvedEmployeeId) {
+      const currentEmployee = await Employee.findById(resolvedEmployeeId);
+      resolvedEmployeeName = getEmployeeDisplayName(currentEmployee, existingPayroll.employeeName || 'Unknown Employee');
     }
 
     // Recalculate totalSalary if basicSalary or employee changed
     let totalSalary = req.body.totalSalary; // default to whatever is sent
     if (basicSalary || employee) {
-      const targetEmployee = employee || (await Payroll.findById(req.params.id)).employee;
+      const targetEmployee = resolvedEmployeeId;
       const allowances = await Allowance.find({ employee: targetEmployee });
       const deductions = await Deduction.find({ employee: targetEmployee });
       const totalAllowance = allowances.reduce((sum, a) => sum + a.amount, 0);
       const totalDeduction = deductions.reduce((sum, d) => sum + d.amount, 0);
-      totalSalary = (basicSalary || (await Payroll.findById(req.params.id)).basicSalary) + totalAllowance - totalDeduction;
+      totalSalary = (basicSalary || existingPayroll.basicSalary) + totalAllowance - totalDeduction;
     }
 
     // Update payMonth if paymentDate changed
@@ -114,7 +133,13 @@ const updatePayroll = async (req, res) => {
     const { payrollCode, ...updateData } = req.body;
     const updatedPayroll = await Payroll.findByIdAndUpdate(
       req.params.id,
-      { ...updateData, totalSalary, ...(payMonth && { payMonth }) },
+      {
+        ...updateData,
+        employee: resolvedEmployeeId,
+        employeeName: resolvedEmployeeName,
+        totalSalary,
+        ...(payMonth && { payMonth })
+      },
       { new: true, runValidators: true }
     );
 

@@ -7,8 +7,7 @@
  */
 export const exportToCSV = (data, headers, keys, fileName = "report") => {
   if (!data || !data.length) {
-    alert("No data available to export");
-    return;
+    return false;
   }
 
   // 1. Create the CSV Header row
@@ -39,4 +38,6 @@ export const exportToCSV = (data, headers, keys, fileName = "report") => {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+
+  return true;
 };

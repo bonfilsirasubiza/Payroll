@@ -1,10 +1,15 @@
  
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const { isStrongPassword, PASSWORD_STRENGTH_MESSAGE } = require('../utils/passwordStrength');
 
 const registerUser = async (req, res) => {
   const { username, password } = req.body;
   try {
+    if (!isStrongPassword(password)) {
+      return res.status(400).json({ message: PASSWORD_STRENGTH_MESSAGE });
+    }
+
     const userExists = await User.findOne({ username });
     if (userExists) return res.status(400).json({ message: 'User already exists' });
 
@@ -13,6 +18,9 @@ const registerUser = async (req, res) => {
 
     res.status(201).json({ token, user: { id: user._id, username: user.username, role: user.role } });
   } catch (error) {
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: PASSWORD_STRENGTH_MESSAGE });
+    }
     res.status(500).json({ message: error.message });
   }
 };

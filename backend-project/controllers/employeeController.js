@@ -1,9 +1,14 @@
  
 const Employee = require('../models/Employee');
+const { getNextGeneratedCode } = require('../utils/generatedIds');
 
 const createEmployee = async (req, res) => {
   try {
-    const employee = await Employee.create(req.body);
+    const employeeCode = await getNextGeneratedCode(Employee, 'employeeCode', 'EMP_');
+    const employee = await Employee.create({
+      ...req.body,
+      employeeCode
+    });
     res.status(201).json(employee);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -31,7 +36,8 @@ const getEmployeeById = async (req, res) => {
 
 const updateEmployee = async (req, res) => {
   try {
-    const updated = await Employee.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    const { employeeCode, ...updateData } = req.body;
+    const updated = await Employee.findByIdAndUpdate(req.params.id, updateData, { new: true, runValidators: true });
     if (!updated) return res.status(404).json({ message: 'Employee not found' });
     res.json(updated);
   } catch (error) {

@@ -7,6 +7,7 @@ const Deduction = require("../models/Deduction");
 const formatPayrollData = async (payroll, employee) => {
   if (!employee) {
     return {
+      payrollId: payroll._id,
       employeeId: null,
       employeeName: 'Unknown Employee',
       employeeEmail: 'N/A',
@@ -27,6 +28,7 @@ const formatPayrollData = async (payroll, employee) => {
   const totalDeductions = deductions.reduce((sum, d) => sum + d.amount, 0);
 
   return {
+    payrollId: payroll._id,
     employeeId: employee._id,
     employeeName: employee.name,
     employeeEmail: employee.email,

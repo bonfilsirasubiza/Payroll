@@ -1,10 +1,16 @@
  
 const Allowance = require('../models/Allowance');
+const { getNextGeneratedCode } = require('../utils/generatedIds');
 
 const createAllowance = async (req, res) => {
   try {
-    const allowance = await Allowance.create(req.body);
-    res.status(201).json(allowance);
+    const allowanceCode = await getNextGeneratedCode(Allowance, 'allowanceCode', 'ALW_');
+    const allowance = await Allowance.create({
+      ...req.body,
+      allowanceCode
+    });
+    const populatedAllowance = await Allowance.findById(allowance._id).populate('employee', 'name position');
+    res.status(201).json(populatedAllowance);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -31,9 +37,11 @@ const getAllowanceById = async (req, res) => {
 
 const updateAllowance = async (req, res) => {
   try {
-    const updated = await Allowance.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    const { allowanceCode, ...updateData } = req.body;
+    const updated = await Allowance.findByIdAndUpdate(req.params.id, updateData, { new: true, runValidators: true });
     if (!updated) return res.status(404).json({ message: 'Allowance not found' });
-    res.json(updated);
+    const populatedAllowance = await Allowance.findById(updated._id).populate('employee', 'name position');
+    res.json(populatedAllowance);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

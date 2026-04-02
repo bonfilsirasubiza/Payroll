@@ -15,12 +15,25 @@ export const formatFRW = (value) => {
 export const formatCurrency = formatFRW;
 
 /**
- * Formats dates into: March 2024
+ * Formats pay month strings into: 2024-March
  */
-export const formatPayMonth = (dateString) => {
-  if (!dateString) return "";
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+export const formatPayMonth = (value) => {
+  if (!value) return "";
+
+  const normalized = String(value).slice(0, 7);
+  const [year, month] = normalized.split('-');
+  const monthIndex = Number(month) - 1;
+
+  if (!year || Number.isNaN(monthIndex) || monthIndex < 0 || monthIndex > 11) {
+    return String(value);
+  }
+
+  const monthName = new Date(Date.UTC(Number(year), monthIndex, 1)).toLocaleString('en-US', {
+    month: 'long',
+    timeZone: 'UTC'
+  });
+
+  return `${year}-${monthName}`;
 };
 
 /**

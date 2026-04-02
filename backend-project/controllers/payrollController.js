@@ -2,6 +2,7 @@ const Payroll = require('../models/Payroll');
 const Allowance = require('../models/Allowance');
 const Deduction = require('../models/Deduction');
 const Employee = require('../models/Employee');
+const { getNextGeneratedCode } = require('../utils/generatedIds');
 
 // ==============================
 // Create Payroll
@@ -28,17 +29,21 @@ const createPayroll = async (req, res) => {
     const payMonth = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
 
     // 4️⃣ Create payroll
+    const payrollCode = await getNextGeneratedCode(Payroll, 'payrollCode', 'PAY_');
     const payroll = await Payroll.create({
       employee,
       basicSalary,
       totalSalary,
       paymentDate: date,
-      payMonth
+      payMonth,
+      payrollCode
     });
+
+    const populatedPayroll = await Payroll.findById(payroll._id).populate('employee', 'name position phone');
 
     res.status(201).json({
       message: 'Payroll added successfully',
-      payroll
+      payroll: populatedPayroll
     });
 
   } catch (error) {
@@ -106,17 +111,20 @@ const updatePayroll = async (req, res) => {
       payMonth = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
     }
 
+    const { payrollCode, ...updateData } = req.body;
     const updatedPayroll = await Payroll.findByIdAndUpdate(
       req.params.id,
-      { ...req.body, totalSalary, ...(payMonth && { payMonth }) },
+      { ...updateData, totalSalary, ...(payMonth && { payMonth }) },
       { new: true, runValidators: true }
     );
 
     if (!updatedPayroll) return res.status(404).json({ message: 'Payroll not found' });
 
+    const populatedPayroll = await Payroll.findById(updatedPayroll._id).populate('employee', 'name position phone');
+
     res.json({
       message: 'Payroll updated successfully',
-      payroll: updatedPayroll
+      payroll: populatedPayroll
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
